@@ -39,20 +39,26 @@ TARGET_METRICS = [
 
 def extract_all_data(excel_file):
     """
-    Scans every sheet in the Excel file for TARGET_METRICS.
-    When it finds one, it extracts the data rows below it.
+    Crash-proof scanner that reads every sheet in the Excel file.
     """
     extracted_data = {}
     try:
         xls = pd.ExcelFile(excel_file)
         
-        # Loop through every sheet in the workbook (UM, TPA, etc.)
         for sheet_name in xls.sheet_names:
             df = pd.read_excel(xls, sheet_name=sheet_name, header=None)
             
-            # Scan the first two columns of the sheet to find our target tables
-            for row_idx in range(len(df)):
-                for col_idx in range(2): 
+            # Skip completely empty sheets
+            if df.empty:
+                continue
+                
+            num_rows, num_cols = df.shape
+            
+            # Safely scan the first two columns (if they exist)
+            cols_to_scan = min(2, num_cols)
+            
+            for row_idx in range(num_rows):
+                for col_idx in range(cols_to_scan): 
                     cell_value = str(df.iloc[row_idx, col_idx]).strip()
                     
                     for metric in TARGET_METRICS:
@@ -60,19 +66,20 @@ def extract_all_data(excel_file):
                             if metric not in extracted_data:
                                 extracted_data[metric] = {}
                             
-                            # We found a table header! Scan the rows directly below it for data
+                            # We found a table header! Scan the rows below it for data
                             for i in range(1, 15):
-                                if row_idx + i < len(df):
+                                if row_idx + i < num_rows:
                                     row_label = str(df.iloc[row_idx + i, col_idx]).strip()
                                     
-                                    # Skip empty rows or standard column headers (M/S, MH, SUD)
-                                    if not row_label or row_label.lower() == "nan" or row_label in ["M/S", "MH", "SUD"]:
+                                    # Skip empty rows or standard sub-headers
+                                    ignore_list = ["nan", "m/s", "mh", "sud", "medical/surgical", "mental health", "substance use disorder"]
+                                    if not row_label or row_label.lower() in ignore_list:
                                         continue
                                         
-                                    # Grab the next 4 columns of data (e.g., the numbers for M/S, MH, SUD)
+                                    # Grab the next 4 columns of data safely
                                     vals = []
                                     for v_col in range(1, 5):
-                                        if col_idx + v_col < len(df.columns):
+                                        if col_idx + v_col < num_cols:
                                             val = str(df.iloc[row_idx + i, col_idx + v_col]).strip()
                                             vals.append("" if val.lower() == "nan" else val)
                                         else:
@@ -86,7 +93,7 @@ def extract_all_data(excel_file):
 
 def inject_data_into_word(word_file, client_data):
     """
-    Hunts through the Word document for matching tables and injects the extracted data.
+    Hunts through the Word document for matching tables and injects the data.
     """
     doc = Document(word_file)
     tables_updated = 0
@@ -96,31 +103,28 @@ def inject_data_into_word(word_file, client_data):
         
         for row in table.rows:
             try:
-                # Clean the Word header text
                 header_text = row.cells[0].text.strip().replace("\n", " ")
                 
-                # 1. Check if this Word row matches a Metric Header we extracted from Excel
+                # Check if this Word row matches a Metric Header we extracted
                 matched_metric = next((m for m in client_data.keys() if m.lower() in header_text.lower()), None)
                 
                 if matched_metric:
                     current_metric = matched_metric
                     continue
                     
-                # 2. Check if this is a Data Row (e.g. "Inpatient IN") under a known metric
+                # Check if this is a Data Row under a known metric
                 if current_metric and header_text in client_data[current_metric]:
                     data_vals = client_data[current_metric][header_text]
                     
-                    # Inject values into the Word table cells (skipping the label in column 0)
                     cells_injected = False
                     for i in range(min(len(data_vals), len(row.cells) - 1)):
-                        if data_vals[i]: # Only overwrite if we actually pulled data from Excel
+                        if data_vals[i]: 
                             row.cells[i+1].text = data_vals[i]
                             cells_injected = True
                             
                     if cells_injected:
                         tables_updated += 1
                         
-                # Reset metric if we hit a completely blank row to keep the logic clean
                 if not header_text:
                     current_metric = None
                     
@@ -131,9 +135,8 @@ def inject_data_into_word(word_file, client_data):
 
 # --- FRONT-END UI ---
 st.title("📄 NQTL Document Assembly Engine")
-st.markdown("Upload a completed client Excel form and your blank Word template. The engine will scan all sheets, intelligently map the data, and generate a final deliverable.")
+st.markdown("Upload a completed client Excel form and your blank Word template.")
 
-st.markdown("### 1. Upload Files")
 col1, col2 = st.columns(2)
 with col1:
     excel_upload = st.file_uploader("Upload Client Excel Form (.xlsx)", type=["xlsx"])
@@ -141,23 +144,19 @@ with col2:
     word_upload = st.file_uploader("Upload Blank Word Template (.docx)", type=["docx"])
 
 if excel_upload and word_upload:
-    st.markdown("### 2. Generate Deliverable")
     if st.button("Run Assembly Engine", type="primary"):
-        with st.spinner("Scanning all Excel sheets and mapping to Word document..."):
+        with st.spinner("Scanning Excel sheets and mapping to Word document..."):
             
-            # Step 1: Extract Data
             extracted_data = extract_all_data(excel_upload)
             
-            # Step 2: Inject Data
             if extracted_data:
                 final_doc, updates = inject_data_into_word(word_upload, extracted_data)
                 
-                # Step 3: Prepare for Download
                 output_stream = io.BytesIO()
                 final_doc.save(output_stream)
                 output_stream.seek(0)
                 
-                st.success(f"✅ Success! Injected data into {updates} rows across multiple tables.")
+                st.success(f"✅ Success! Injected data into {updates} rows across the document.")
                 
                 st.download_button(
                     label="⬇️ Download Completed NQTL Analysis",
@@ -166,4 +165,4 @@ if excel_upload and word_upload:
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
             else:
-                st.warning("Could not find any matching NQTL data tables in the uploaded Excel file.")
+                st.warning("Could not find any matching NQTL data tables in the uploaded Excel file. Make sure the text headers in the Excel file match the target list.")
