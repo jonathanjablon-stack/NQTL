@@ -1,0 +1,1587 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NQTL Mapper IDE — Desktop Power Tools (v2.1)</title>
+<style>
+  :root{
+    --bg:#0b1020; --bg2:#070a14;
+    --panel:rgba(18,26,51,.86);
+    --line:rgba(255,255,255,.10);
+    --text:#eaf0ff; --muted:#91a4c7;
+    --accent:#6aa9ff; --accent2:rgba(106,169,255,.18);
+    --ok:#6aff9d; --bad:#ff6a6a; --warn:#ffd166;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,var(--bg2),var(--bg));color:var(--text);height:100vh;overflow:hidden}
+  header{padding:12px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(11,16,32,.92);backdrop-filter:blur(8px);z-index:10}
+  h1{font-size:16px;margin:0 0 4px 0;font-weight:900}
+  .sub{font-size:12px;color:var(--muted);line-height:1.35}
+  .app{display:flex;flex-direction:column;height:100vh}
+  .main{flex:1;display:flex;min-height:0}
+  .pane{min-width:280px;min-height:0;display:flex;flex-direction:column}
+  .pane.left{flex:0 0 42%}
+  .pane.right{flex:1 1 auto}
+  .splitter{width:8px;cursor:col-resize;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border-left:1px solid rgba(255,255,255,.08);border-right:1px solid rgba(0,0,0,.25)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;min-height:0;margin:12px}
+  .cardHead{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .cardHead b{font-size:13px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);font-size:11px;color:#dbe7ff;white-space:nowrap}
+  .cardBody{padding:10px 12px;min-height:0;display:flex;flex-direction:column;gap:10px}
+  label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}
+  input[type=file],input[type=text],select,textarea{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:9px 10px;border-radius:10px}
+  textarea{min-height:70px;resize:vertical}
+  button{background:var(--accent2);border:1px solid rgba(106,169,255,.55);color:var(--text);padding:9px 10px;border-radius:10px;cursor:pointer;font-weight:850}
+  button.secondary{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);font-weight:750}
+  button.danger{background:rgba(255,106,106,.14);border-color:rgba(255,106,106,.55)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row>*{flex:1 1 220px}
+  .status{font-size:12px;line-height:1.35;padding:10px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.04);white-space:pre-wrap}
+  .status.good{border-color:rgba(106,255,157,.35);background:rgba(106,255,157,.08)}
+  .status.bad{border-color:rgba(255,106,106,.35);background:rgba(255,106,106,.08)}
+  .status.warn{border-color:rgba(255,209,102,.35);background:rgba(255,209,102,.08)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .tiny{font-size:11px;color:var(--muted)}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap}
+  .tab{padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);cursor:pointer;font-size:12px;font-weight:850}
+  .tab.active{border-color:rgba(106,169,255,.7);background:rgba(106,169,255,.18)}
+  .tabPane{display:none;min-height:0}
+  .tabPane.active{display:flex;flex-direction:column;gap:10px;min-height:0}
+  .list{flex:1;min-height:0;overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:12px;background:rgba(255,255,255,.03)}
+  .item{padding:10px 10px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer}
+  .item:last-child{border-bottom:none}
+  .item:hover{background:rgba(106,169,255,.08)}
+  .item.active{background:rgba(106,169,255,.16);border-left:3px solid rgba(106,169,255,.8);padding-left:7px}
+  .item .meta{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .item .txt{font-size:12px;line-height:1.35}
+
+  .excelWrap{flex:1;min-height:0;border:1px solid rgba(255,255,255,.10);border-radius:12px;overflow:auto;background:rgba(255,255,255,.02)}
+  table.grid{border-collapse:collapse;width:max-content;min-width:100%}
+  table.grid th, table.grid td{border:1px solid rgba(255,255,255,.10);padding:6px 8px;font-size:12px;white-space:nowrap}
+  table.grid th{position:sticky;top:0;background:rgba(11,16,32,.95);z-index:2}
+  table.grid th.rowhdr{position:sticky;left:0;z-index:3}
+  table.grid td.rowhdr{position:sticky;left:0;background:rgba(11,16,32,.95);z-index:1;color:var(--muted)}
+  td.cell{cursor:pointer;user-select:none}
+  td.cell:hover{outline:2px solid rgba(106,169,255,.6);outline-offset:-2px}
+  td.cell.sel{outline:2px solid rgba(255,209,102,.85);outline-offset:-2px;background:rgba(255,209,102,.12)}
+  td.cell.rng{outline:2px solid rgba(106,255,157,.75);outline-offset:-2px;background:rgba(106,255,157,.08)}
+  td.cell.rngEdge{outline:2px solid rgba(106,255,157,.9);outline-offset:-2px;background:rgba(106,255,157,.12)}
+  .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;padding:1px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06)}
+  .dual{flex:1;min-height:0;display:flex;gap:10px}
+  .dual .preview{flex:1;min-width:280px;min-height:0;border:1px solid rgba(255,255,255,.10);border-radius:12px;background:rgba(255,255,255,.03);overflow:auto;padding:10px}
+  .dual .preview .seg{padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(0,0,0,.12);margin-bottom:8px;cursor:pointer}
+  .dual .preview .seg:hover{border-color:rgba(106,169,255,.45)}
+  .dual .preview .seg.active{border-color:rgba(255,209,102,.8);background:rgba(255,209,102,.10)}
+  .dual .preview .seg .h{font-size:11px;color:var(--muted);margin-bottom:6px}
+  .dual .preview .seg .t{font-size:12px;line-height:1.35;white-space:pre-wrap}
+  .editorWrap{flex:1.35;min-width:360px;min-height:0;border:1px solid rgba(255,255,255,.10);border-radius:12px;background:rgba(255,255,255,.02);overflow:hidden}
+  .CodeMirror{height:100%;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
+  .rebTbl{width:100%;border-collapse:collapse;border:1px solid rgba(255,255,255,.10);border-radius:12px;overflow:hidden}
+  .rebTbl th,.rebTbl td{border-bottom:1px solid rgba(255,255,255,.08);padding:8px 8px;font-size:12px;text-align:left;vertical-align:top}
+  .rebTbl th{background:rgba(11,16,32,.7);color:#dbe7ff}
+  .twoCol{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0}
+  .tablePreview{border:1px solid rgba(255,255,255,.10);border-radius:12px;overflow:auto;background:rgba(255,255,255,.02);max-height:360px}
+  table.tpv{border-collapse:collapse;width:max-content;min-width:100%}
+  table.tpv th, table.tpv td{border:1px solid rgba(255,255,255,.10);padding:6px 8px;font-size:12px;white-space:nowrap}
+  table.tpv th{position:sticky;top:0;background:rgba(11,16,32,.95);z-index:2}
+  table.tpv td{cursor:pointer}
+  table.tpv td:hover{outline:2px solid rgba(106,169,255,.6);outline-offset:-2px}
+  table.tpv td.active{outline:2px solid rgba(255,209,102,.85);outline-offset:-2px;background:rgba(255,209,102,.12)}
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+</head>
+<body>
+<div class="app">
+<header>
+  <h1>NQTL Mapper IDE</h1>
+  <div class="sub">
+    Desktop-optimized. Shortcuts: <span class="kbd">Ctrl</span>+<span class="kbd">I</span> insert token • <span class="kbd">Ctrl</span>+<span class="kbd">S</span> download mapped template • <span class="kbd">Ctrl</span>+<span class="kbd">Z</span>/<span class="kbd">Ctrl</span>+<span class="kbd">Y</span> undo/redo • <span class="kbd">Ctrl</span>+<span class="kbd">F</span> focuses search in the active tab.
+  </div>
+</header>
+
+<div class="main">
+  
+  <div class="pane left">
+    <div class="card" style="flex:1;min-height:0">
+      <div class="cardHead">
+        <b>Excel</b>
+        <span class="pill" id="excelPill">Not loaded</span>
+      </div>
+      <div class="cardBody">
+        <div class="row">
+          <div>
+            <label>Upload Excel workbooks (.xlsx) — multiple</label>
+            <input type="file" id="xlsx" accept=".xlsx" multiple/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Workbook</label>
+            <select id="wbSel"></select>
+          </div>
+          <div>
+            <label>Sheet</label>
+            <select id="shSel"></select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>View range (A1 notation)</label>
+            <input type="text" id="range" value="A1:AD80"/>
+          </div>
+          <div>
+            <label>Selection</label>
+            <input type="text" id="pickedCell" value="" placeholder="Click a cell or drag a range…" readonly/>
+          </div>
+        </div>
+
+        <div class="excelWrap" id="excelWrap">
+          <div class="status">Upload Excel files to view sheets.</div>
+        </div>
+
+        <div class="status tiny">Token: <span class="mono" id="tokenLive">(none)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="splitter" id="splitter" title="Drag to resize panes"></div>
+
+  
+  <div class="pane right">
+    <div class="card" style="flex:1;min-height:0">
+      <div class="cardHead">
+        <b>Word Template + Tools</b>
+        <span class="pill" id="wordPill">Not loaded</span>
+      </div>
+      <div class="cardBody" style="padding-bottom:12px">
+        <div class="row">
+          <div>
+            <label>Upload Word template (.docx)</label>
+            <input type="file" id="docx" accept=".docx"/>
+          </div>
+          <div>
+            <label>Token preview</label>
+            <input type="text" id="tokenPreview" class="mono" readonly placeholder="Click an Excel cell or drag a range…"/>
+            <div class="tiny" style="margin-top:6px">Cell: <span class="mono">[[XLSX:wb|sheet|A1]]</span> • Range: <span class="mono">[[XLSX_RANGE:wb|sheet|A1:C3]]</span></div>
+          </div>
+        </div>
+
+        <div class="tabs" id="tabs">
+          <div class="tab active" data-tab="para">Paragraph View</div>
+          <div class="tab" data-tab="table">Table Cell View</div>
+          <div class="tab" data-tab="dual">Word + XML</div>
+          <div class="tab" data-tab="regex">Regex Find/Replace</div>
+          <div class="tab" data-tab="fill">Replace / Export</div>
+        </div>
+
+        
+        <div class="tabPane active" id="tab-para">
+          <div class="row">
+            <div>
+              <label>Search paragraphs</label>
+              <input type="text" id="searchPara" placeholder="Type to filter…"/>
+            </div>
+            <div>
+              <label>Selected target</label>
+              <input type="text" id="pickedTargetPara" readonly placeholder="Click a paragraph…"/>
+            </div>
+          </div>
+          <div class="row" style="align-items:flex-end">
+            <button id="btnInsertPara" disabled>Insert</button>
+            <button id="btnUndo" class="secondary" disabled>Undo</button>
+            <button id="btnRedo" class="secondary" disabled>Redo</button>
+            <button id="btnExportTemplate" class="secondary" disabled>Download mapped template</button>
+          </div>
+          <div class="list" id="paraList"></div>
+        </div>
+
+        
+        <div class="tabPane" id="tab-table">
+          <div class="twoCol" style="flex:1;min-height:0">
+            <div style="display:flex;flex-direction:column;gap:10px;min-height:0">
+              <div class="row">
+                <div>
+                  <label>Search tables/cells</label>
+                  <input type="text" id="searchTable" placeholder="e.g., 'Operational Data' or 'Table 12'"/>
+                </div>
+                <div>
+                  <label>Selected target</label>
+                  <input type="text" id="pickedTargetCell" readonly placeholder="Click a table cell…"/>
+                </div>
+              </div>
+              <div class="row" style="align-items:flex-end">
+                <button id="btnInsertCell" disabled>Insert</button>
+                <button id="btnUndo2" class="secondary" disabled>Undo</button>
+                <button id="btnRedo2" class="secondary" disabled>Redo</button>
+                <button id="btnExportTemplate2" class="secondary" disabled>Download mapped template</button>
+              </div>
+              <div class="list" id="tableList"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;min-height:0">
+              <div class="status tiny">Table preview (click to select a cell faster than scrolling)</div>
+              <div class="tablePreview" id="tablePreview"><div class="status">Select a table cell to preview its table.</div></div>
+            </div>
+          </div>
+        </div>
+
+        
+        <div class="tabPane" id="tab-dual">
+          <div class="row" style="align-items:flex-end">
+            <div style="flex:2 1 360px">
+              <label>Insert mode</label>
+              <select id="insertMode">
+                <option value="cursor">Insert at XML cursor</option>
+                <option value="segmentEnd">Insert at end of selected segment</option>
+              </select>
+              <div class="tiny" style="margin-top:6px">Cursor mode inserts a new <span class="mono">&lt;w:r&gt;&lt;w:t&gt;</span> token run at the caret position.</div>
+            </div>
+            <div style="flex:1 1 220px">
+              <button id="btnInsertXml" disabled>Insert</button>
+            </div>
+            <div style="flex:1 1 220px">
+              <button id="btnUndo3" class="secondary" disabled>Undo</button>
+            </div>
+            <div style="flex:1 1 220px">
+              <button id="btnRedo3" class="secondary" disabled>Redo</button>
+            </div>
+            <div style="flex:1 1 220px">
+              <button id="btnExportTemplate3" class="secondary" disabled>Download mapped template</button>
+            </div>
+          </div>
+
+          <div class="dual">
+            <div class="preview" id="wordPreview">
+              <div class="status">Load a Word doc to view segments.</div>
+            </div>
+            <div class="editorWrap" id="xmlEditorWrap">
+              <div class="status">XML editor will appear here.</div>
+            </div>
+          </div>
+        </div>
+
+        
+        <div class="tabPane" id="tab-regex">
+          <div class="row">
+            <div style="flex:2 1 360px">
+              <label>Mode</label>
+              <select id="rxMode">
+                <option value="wtext">Word text stream (matches across &lt;w:t&gt; boundaries)</option>
+                <option value="xml">Raw document.xml</option>
+              </select>
+              <div class="tiny" style="margin-top:6px">Word-text mode operates on the concatenation of all <span class="mono">&lt;w:t&gt;</span> nodes, so matches can cross run boundaries. Replacement reflows text back into the existing <span class="mono">&lt;w:t&gt;</span> nodes in order (formatting preserved; node boundaries may shift).</div>
+            </div>
+            <div style="flex:1 1 220px">
+              <label>Flags</label>
+              <input type="text" id="rxFlags" value="g" placeholder="e.g., g i m s"/>
+              <div class="tiny" style="margin-top:6px">Use JS regex flags: g i m s u y (space-separated ok).</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div style="flex:2 1 360px">
+              <label>Find (regex)</label>
+              <input type="text" id="rxFind" class="mono" placeholder="e.g., \[\[XLSX:[^\]]+\]\]"/>
+            </div>
+            <div style="flex:2 1 360px">
+              <label>Replace</label>
+              <input type="text" id="rxReplace" class="mono" placeholder="Use $1 etc. Leave empty for find-only."/>
+            </div>
+          </div>
+
+          <div class="row" style="align-items:flex-end">
+            <button id="btnRxFind" disabled>Find</button>
+            <button id="btnRxReplaceOne" class="secondary" disabled>Replace next</button>
+            <button id="btnRxReplaceAll" class="danger" disabled>Replace all</button>
+            <button id="btnUndo4" class="secondary" disabled>Undo</button>
+            <button id="btnRedo4" class="secondary" disabled>Redo</button>
+          </div>
+
+          <div class="list" id="rxResults"><div class="status">Load a Word doc to use regex tools.</div></div>
+          <div class="status" id="rxStatus">Ready.</div>
+        </div>
+
+        
+        <div class="tabPane" id="tab-fill">
+          <div class="row">
+            <div style="flex:2 1 360px">
+              <label>Workbook rebinding</label>
+              <div class="tiny">Map “expected workbook name in token” → “uploaded filename” so renamed files don’t break replacement.</div>
+            </div>
+            <div style="flex:1 1 220px">
+              <button id="btnRebuildRebind" class="secondary" disabled>Refresh bindings</button>
+            </div>
+          </div>
+
+          <div class="list" id="rebindPane" style="max-height:260px"></div>
+
+          <div class="row" style="align-items:flex-end">
+            <div style="flex:2 1 360px">
+              <label>Download filled deliverable</label>
+              <div class="tiny">Replaces <span class="mono">[[XLSX:wb|sheet|A1]]</span> and <span class="mono">[[XLSX_RANGE:wb|sheet|A1:C3]]</span> (range becomes TSV text).</div>
+            </div>
+            <div style="flex:1 1 220px">
+              <button id="btnFill" disabled>Download filled deliverable (.docx)</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <button id="btnDownloadReport" class="secondary" disabled>Download report</button>
+          </div>
+
+          <div class="status" id="fillStatus">Load Word + Excel to enable replacement.</div>
+        </div>
+
+        <div class="status" id="status">Load both Excel and Word to start mapping.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+
+function loadScriptSequentially(sources, globalName){
+  return new Promise((resolve, reject)=>{
+    const tryNext = (i)=>{
+      if(i>=sources.length){ reject(new Error(`Failed to load ${globalName} from any source.`)); return; }
+      const s=document.createElement('script');
+      s.src=sources[i]; s.async=true;
+      s.onload=()=>resolve(true);
+      s.onerror=()=>{ s.remove(); tryNext(i+1); };
+      document.head.appendChild(s);
+    };
+    tryNext(0);
+  });
+}
+async function ensureLibs(){
+  const needed=[];
+  if(typeof window.PizZip==='undefined'){
+    needed.push(loadScriptSequentially([
+      "./lib/pizzip.min.js",
+      "https://cdn.jsdelivr.net/npm/pizzip@3.1.7/dist/pizzip.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.7/pizzip.min.js"
+    ],"PizZip"));
+  }
+  if(typeof window.XLSX==='undefined'){
+    needed.push(loadScriptSequentially([
+      "./lib/xlsx.full.min.js",
+      "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
+    ],"XLSX"));
+  }
+  if(typeof window.saveAs==='undefined'){
+    needed.push(loadScriptSequentially([
+      "./lib/FileSaver.min.js",
+      "https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"
+    ],"FileSaver"));
+  }
+  if(typeof window.CodeMirror==='undefined'){
+    needed.push(loadScriptSequentially([
+      "./lib/codemirror.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"
+    ],"CodeMirror"));
+    needed.push(loadScriptSequentially([
+      "./lib/xml.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"
+    ],"CodeMirrorXMLMode"));
+  }
+  await Promise.all(needed);
+}
+
+
+const $=id=>document.getElementById(id);
+function setStatus(msg,kind){
+  const el=$('status');
+  el.className='status'+(kind?(' '+kind):'');
+  el.textContent=msg;
+}
+function setFillStatus(msg,kind){
+  const el=$('fillStatus');
+  el.className='status'+(kind?(' '+kind):'');
+  el.textContent=msg;
+}
+function setRxStatus(msg,kind){
+  const el=$('rxStatus');
+  el.className='status'+(kind?(' '+kind):'');
+  el.textContent=msg;
+}
+function nowStamp(){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; }
+function readAsArrayBuffer(file){ return new Promise((res,rej)=>{const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error||new Error("read failed")); r.readAsArrayBuffer(file);}); }
+function norm(s){ return String(s||"").replace(/\s+/g," ").trim(); }
+function escXml(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;"); }
+
+/* Replace token even if split across runs */
+function replaceTokenAcrossRuns(xml, token, replacement){
+  if(xml.includes(token)) return xml.split(token).join(replacement);
+  const esc = token.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const chars = esc.split("");
+  const pat = chars.map(ch=> ch===" " ? "\\s*" : ch).join("(?:</w:t>\\s*<w:t[^>]*>\\s*)*");
+  const re=new RegExp(pat,"g");
+  return xml.replace(re, replacement);
+}
+
+/* ---------- Splitter ---------- */
+(function initSplitter(){
+  const splitter=$('splitter');
+  const left=document.querySelector('.pane.left');
+  let dragging=false;
+  splitter.addEventListener('mousedown', (e)=>{ dragging=true; document.body.style.cursor='col-resize'; e.preventDefault(); });
+  window.addEventListener('mousemove',(e)=>{
+    if(!dragging) return;
+    const rect=document.querySelector('.main').getBoundingClientRect();
+    const x=e.clientX-rect.left;
+    const pct=Math.max(18, Math.min(72, (x/rect.width)*100));
+    left.style.flex = `0 0 ${pct}%`;
+    if(cm) cm.refresh();
+  });
+  window.addEventListener('mouseup',()=>{ dragging=false; document.body.style.cursor=''; });
+})();
+
+/* ---------- Tabs ---------- */
+function activeTab(){ return document.querySelector('.tab.active')?.dataset?.tab || 'para'; }
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const tab=t.dataset.tab;
+    document.querySelectorAll('.tabPane').forEach(p=>p.classList.remove('active'));
+    $('tab-'+tab).classList.add('active');
+    if(tab==='dual' && cm) cm.refresh();
+  });
+});
+
+/* ---------- State ---------- */
+let excelState={ wbByName:new Map(), wbName:"", sheetName:"", pickedCell:"", range:null, rangeA1:"" };
+let wordState={
+  docxName:"", zip:null, xml:"", history:[], redo:[],
+  paragraphs:[], selectedParaIndex:null,
+  tables:[], selectedCellKey:null,
+  segments:[], selectedSegId:null
+};
+let cm=null;
+let lastReport="";
+let rebindMap = new Map();
+
+/* ---------- Keyboard shortcuts ---------- */
+window.addEventListener('keydown', (e)=>{
+  if(e.ctrlKey || e.metaKey){
+    const k = e.key.toLowerCase();
+    if(k==='s'){ e.preventDefault(); if(wordState.xml) exportMappedTemplate(); return; }
+    if(k==='z'){ e.preventDefault(); doUndo(); return; }
+    if(k==='y'){ e.preventDefault(); doRedo(); return; }
+    if(k==='i'){ e.preventDefault(); smartInsert(); return; }
+    if(k==='f'){ // focus search for active tab
+      const tab=activeTab();
+      if(tab==='para'){ e.preventDefault(); $('searchPara')?.focus(); return; }
+      if(tab==='table'){ e.preventDefault(); $('searchTable')?.focus(); return; }
+      if(tab==='regex'){ e.preventDefault(); $('rxFind')?.focus(); return; }
+    }
+  }
+});
+
+/* ---------- Excel selection + range drag ---------- */
+function tokenFromSelection(){
+  if(excelState.wbName && excelState.sheetName){
+    if(excelState.rangeA1){
+      return `[[XLSX_RANGE:${excelState.wbName}|${excelState.sheetName}|${excelState.rangeA1}]]`;
+    }
+    if(excelState.pickedCell){
+      return `[[XLSX:${excelState.wbName}|${excelState.sheetName}|${excelState.pickedCell}]]`;
+    }
+  }
+  return "";
+}
+function refreshTokenPreview(){
+  const tok=tokenFromSelection();
+  $('tokenPreview').value = tok;
+  $('tokenLive').textContent = tok || "(none)";
+  $('btnInsertPara').disabled = !(tok && wordState.selectedParaIndex!==null && wordState.xml);
+  $('btnInsertCell').disabled = !(tok && wordState.selectedCellKey && wordState.xml);
+  $('btnInsertXml').disabled = !(tok && wordState.xml && cm);
+  $('btnRxFind').disabled = !wordState.xml;
+  $('btnRxReplaceOne').disabled = !wordState.xml;
+  $('btnRxReplaceAll').disabled = !wordState.xml;
+}
+function fillWorkbookSelect(){
+  const sel=$('wbSel'); sel.innerHTML="";
+  sel.appendChild(new Option("Select workbook…",""));
+  for(const name of excelState.wbByName.keys()){
+    sel.appendChild(new Option(name,name));
+  }
+}
+function fillSheetSelect(){
+  const sel=$('shSel'); sel.innerHTML="";
+  sel.appendChild(new Option("Select sheet…",""));
+  if(!excelState.wbName) return;
+  const wb=excelState.wbByName.get(excelState.wbName);
+  wb.SheetNames.forEach(n=>sel.appendChild(new Option(n,n)));
+}
+function renderExcel(){
+  const wrap=$('excelWrap');
+  if(!excelState.wbName||!excelState.sheetName){
+    wrap.innerHTML = `<div class="status">Select a workbook and sheet.</div>`;
+    return;
+  }
+  const wb=excelState.wbByName.get(excelState.wbName);
+  const sh=wb.Sheets[excelState.sheetName];
+  const rangeTxt=($('range').value||"A1:AD80").trim();
+  let viewRange;
+  try{ viewRange=XLSX.utils.decode_range(rangeTxt); }catch(e){ wrap.innerHTML=`<div class="status bad">Bad range. Use A1:AD80 format.</div>`; return; }
+
+  const rows = viewRange.e.r-viewRange.s.r+1;
+  const cols = viewRange.e.c-viewRange.s.c+1;
+
+  let html=`<table class="grid"><thead><tr><th class="rowhdr"></th>`;
+  for(let c=0;c<cols;c++){
+    const col = XLSX.utils.encode_col(viewRange.s.c+c);
+    html+=`<th>${col}</th>`;
+  }
+  html+=`</tr></thead><tbody>`;
+
+  const selCell = excelState.pickedCell;
+  const selRange = excelState.range; // decoded range
+
+  for(let r=0;r<rows;r++){
+    const rr=viewRange.s.r+r;
+    html+=`<tr><td class="rowhdr">${rr+1}</td>`;
+    for(let c=0;c<cols;c++){
+      const cc=viewRange.s.c+c;
+      const addr=XLSX.utils.encode_cell({r:rr,c:cc});
+      const cell=sh[addr];
+      const v=cell && cell.v!==undefined && cell.v!==null ? String(cell.v) : "";
+      let cls="cell";
+      if(selCell===addr) cls+=" sel";
+      if(selRange){
+        if(rr>=selRange.s.r && rr<=selRange.e.r && cc>=selRange.s.c && cc<=selRange.e.c){
+          cls += " rng";
+          if((rr===selRange.s.r||rr===selRange.e.r) && (cc===selRange.s.c||cc===selRange.e.c)) cls+=" rngEdge";
+        }
+      }
+      html+=`<td class="${cls}" data-addr="${addr}" data-r="${rr}" data-c="${cc}">${escXml(v)}</td>`;
+    }
+    html+=`</tr>`;
+  }
+  html+=`</tbody></table>`;
+  wrap.innerHTML=html;
+
+  // click selects single cell
+  wrap.querySelectorAll('td.cell').forEach(td=>{
+    td.addEventListener('click', ()=>{
+      excelState.pickedCell = td.getAttribute('data-addr');
+      excelState.range = null;
+      excelState.rangeA1 = "";
+      $('pickedCell').value = excelState.pickedCell;
+      renderExcel();
+      refreshTokenPreview();
+    });
+  });
+
+  // drag selects range
+  let dragging=false;
+  let anchor=null;
+  const onDown=(e)=>{
+    const td=e.target.closest('td.cell');
+    if(!td) return;
+    dragging=true;
+    anchor={r:parseInt(td.dataset.r,10), c:parseInt(td.dataset.c,10)};
+    excelState.range = {s:{r:anchor.r,c:anchor.c}, e:{r:anchor.r,c:anchor.c}};
+    excelState.rangeA1 = XLSX.utils.encode_range(excelState.range);
+    excelState.pickedCell = "";
+    $('pickedCell').value = excelState.rangeA1;
+    renderExcel();
+    refreshTokenPreview();
+    e.preventDefault();
+  };
+  const onMove=(e)=>{
+    if(!dragging||!anchor) return;
+    const td=e.target.closest('td.cell');
+    if(!td) return;
+    const r=parseInt(td.dataset.r,10), c=parseInt(td.dataset.c,10);
+    excelState.range = {
+      s:{r:Math.min(anchor.r,r), c:Math.min(anchor.c,c)},
+      e:{r:Math.max(anchor.r,r), c:Math.max(anchor.c,c)}
+    };
+    excelState.rangeA1 = XLSX.utils.encode_range(excelState.range);
+    $('pickedCell').value = excelState.rangeA1;
+    renderExcel();
+    refreshTokenPreview();
+    e.preventDefault();
+  };
+  const onUp=()=>{ dragging=false; anchor=null; };
+  wrap.addEventListener('mousedown', onDown, {passive:false});
+  wrap.addEventListener('mousemove', onMove, {passive:false});
+  window.addEventListener('mouseup', onUp);
+}
+
+/* ---------- Word parsing ---------- */
+function extractTextFromXml(xmlChunk){
+  const ts = xmlChunk.match(/<w:t[^>]*>[\s\S]*?<\/w:t>/g) || [];
+  const text = ts.map(t=>t.replace(/^<w:t[^>]*>/,'').replace(/<\/w:t>$/,'')).join("");
+  return norm(text);
+}
+function parseParagraphs(xml){
+  const out=[];
+  const re=/<w:p\b[\s\S]*?<\/w:p>/g;
+  let m, idx=0;
+  while((m=re.exec(xml))!==null){
+    const pXml=m[0];
+    out.push({ index:idx++, text:extractTextFromXml(pXml), start:m.index, end:m.index+pXml.length });
+  }
+  return out;
+}
+function parseTables(xml){
+  const tblRe=/<w:tbl\b[\s\S]*?<\/w:tbl>/g;
+  const tables=[];
+  let m, tIdx=0;
+  while((m=tblRe.exec(xml))!==null){
+    const tblXml=m[0];
+    const tblStart=m.index;
+    const rows=[];
+    const trRe=/<w:tr\b[\s\S]*?<\/w:tr>/g;
+    let tr, rIdx=0;
+    while((tr=trRe.exec(tblXml))!==null){
+      const trXml=tr[0];
+      const cells=[];
+      const tcRe=/<w:tc\b[\s\S]*?<\/w:tc>/g;
+      let tc, cIdx=0;
+      while((tc=tcRe.exec(trXml))!==null){
+        const tcXml=tc[0];
+        const start = tblStart + tr.index + tc.index;
+        const end = start + tcXml.length;
+        const text = extractTextFromXml(tcXml);
+        cells.push({t:tIdx, r:rIdx, c:cIdx, key:`t${tIdx}-r${rIdx}-c${cIdx}`, text, start, end});
+        cIdx++;
+      }
+      rows.push({r:rIdx, cells});
+      rIdx++;
+    }
+    tables.push({t:tIdx, start:tblStart, end:tblStart+tblXml.length, rows});
+    tIdx++;
+  }
+  return tables;
+}
+function buildSegments(xml){
+  const segs=[];
+  const paras=parseParagraphs(xml);
+  paras.forEach(p=>{
+    segs.push({id:`p${p.index}`, type:"paragraph", label:`Paragraph #${p.index+1}`, text:p.text||"(blank)", start:p.start, end:p.end});
+  });
+  const tables=parseTables(xml);
+  tables.forEach(tbl=>{
+    tbl.rows.forEach(row=>{
+      row.cells.forEach(cell=>{
+        segs.push({id:`cell-${cell.key}`, type:"cell", label:`Table ${cell.t+1} • R${cell.r+1}C${cell.c+1}`, text:cell.text||"(blank)", start:cell.start, end:cell.end});
+      });
+    });
+  });
+  segs.sort((a,b)=>a.start-b.start);
+  return {paras, tables, segs};
+}
+
+/* ---------- Rendering ---------- */
+function renderParagraphList(){
+  const list=$('paraList');
+  if(!wordState.paragraphs.length){
+    list.innerHTML = `<div class="status">Upload a Word .docx to see paragraphs.</div>`;
+    return;
+  }
+  const q=norm($('searchPara').value||"").toLowerCase();
+  const frag=document.createDocumentFragment();
+  wordState.paragraphs.forEach(p=>{
+    const hay=(p.text||"").toLowerCase();
+    if(q && !hay.includes(q)) return;
+    const div=document.createElement('div');
+    div.className='item'+(wordState.selectedParaIndex===p.index?' active':'');
+    div.innerHTML = `<div class="meta">Paragraph #${p.index+1}</div><div class="txt">${p.text ? escXml(p.text) : "· (blank paragraph)"}</div>`;
+    div.addEventListener('click', ()=>{
+      wordState.selectedParaIndex = p.index;
+      $('pickedTargetPara').value = `Paragraph #${p.index+1}`;
+      renderParagraphList();
+      refreshTokenPreview();
+    });
+    frag.appendChild(div);
+  });
+  list.innerHTML="";
+  list.appendChild(frag);
+}
+function renderTableList(){
+  const list=$('tableList');
+  if(!wordState.tables.length){
+    list.innerHTML = `<div class="status">Upload a Word .docx to see tables/cells.</div>`;
+    return;
+  }
+  const q=norm($('searchTable').value||"").toLowerCase();
+  const frag=document.createDocumentFragment();
+  wordState.tables.forEach(tbl=>{
+    const tHeader=document.createElement('div');
+    tHeader.className='item';
+    tHeader.style.cursor='default';
+    tHeader.innerHTML = `<div class="meta">Table #${tbl.t+1}</div><div class="txt tiny">Rows: ${tbl.rows.length}</div>`;
+    frag.appendChild(tHeader);
+    tbl.rows.forEach(row=>{
+      row.cells.forEach(cell=>{
+        const label=`Table ${cell.t+1} • R${cell.r+1}C${cell.c+1}`;
+        const hay=(label+" "+(cell.text||"")).toLowerCase();
+        if(q && !hay.includes(q)) return;
+        const div=document.createElement('div');
+        div.className='item'+(wordState.selectedCellKey===cell.key?' active':'');
+        div.innerHTML = `<div class="meta">${label}</div><div class="txt">${cell.text ? escXml(cell.text) : "· (blank cell)"}</div>`;
+        div.addEventListener('click', ()=>{
+          wordState.selectedCellKey=cell.key;
+          $('pickedTargetCell').value = label;
+          renderTableList();
+          renderTablePreviewForCell(cell.key);
+          refreshTokenPreview();
+        });
+        frag.appendChild(div);
+      });
+    });
+  });
+  list.innerHTML="";
+  list.appendChild(frag);
+}
+function renderTablePreviewForCell(cellKey){
+  const wrap=$('tablePreview');
+  if(!cellKey){ wrap.innerHTML=`<div class="status">Select a table cell to preview its table.</div>`; return; }
+  // find table index from key: tN-rX-cY
+  const m=/^t(\d+)-r\d+-c\d+$/.exec(cellKey);
+  if(!m){ wrap.innerHTML=`<div class="status">Cannot preview.</div>`; return; }
+  const tIdx=parseInt(m[1],10);
+  const tbl=wordState.tables.find(t=>t.t===tIdx);
+  if(!tbl){ wrap.innerHTML=`<div class="status">Table not found.</div>`; return; }
+  // limit preview
+  const maxR= Math.min(tbl.rows.length, 25);
+  const maxC= Math.min(Math.max(...tbl.rows.map(r=>r.cells.length)), 12);
+
+  let html=`<table class="tpv"><thead><tr><th></th>`;
+  for(let c=0;c<maxC;c++) html+=`<th>C${c+1}</th>`;
+  html+=`</tr></thead><tbody>`;
+  for(let r=0;r<maxR;r++){
+    html+=`<tr><th>R${r+1}</th>`;
+    const row=tbl.rows[r];
+    for(let c=0;c<maxC;c++){
+      const cell=row.cells[c];
+      const key=cell?cell.key:"";
+      const txt=cell?cell.text:"";
+      const active = key && key===wordState.selectedCellKey;
+      html += `<td class="${active?'active':''}" data-key="${key}">${escXml(txt||"")}</td>`;
+    }
+    html+=`</tr>`;
+  }
+  html+=`</tbody></table>`;
+  wrap.innerHTML=html;
+
+  wrap.querySelectorAll('td[data-key]').forEach(td=>{
+    td.addEventListener('click', ()=>{
+      const k=td.getAttribute('data-key');
+      if(!k) return;
+      wordState.selectedCellKey=k;
+      const parts=/^t(\d+)-r(\d+)-c(\d+)$/.exec(k);
+      if(parts){
+        $('pickedTargetCell').value = `Table ${parseInt(parts[1],10)+1} • R${parseInt(parts[2],10)+1}C${parseInt(parts[3],10)+1}`;
+      }
+      renderTableList();
+      renderTablePreviewForCell(k);
+      refreshTokenPreview();
+    });
+  });
+}
+function renderWordPreview(){
+  const wrap=$('wordPreview');
+  if(!wordState.segments.length){
+    wrap.innerHTML = `<div class="status">Load a Word doc to view segments.</div>`;
+    return;
+  }
+  const frag=document.createDocumentFragment();
+  wordState.segments.forEach(seg=>{
+    const div=document.createElement('div');
+    div.className='seg'+(wordState.selectedSegId===seg.id?' active':'');
+    div.dataset.id=seg.id;
+    div.dataset.start=String(seg.start);
+    div.dataset.end=String(seg.end);
+    div.innerHTML = `<div class="h">${seg.label} <span class="pill" style="margin-left:6px">${seg.type}</span></div><div class="t">${escXml(seg.text)}</div>`;
+    div.addEventListener('click', ()=>{
+      wordState.selectedSegId=seg.id;
+      highlightPreviewSelection();
+      if(cm){
+        const from=cm.posFromIndex(seg.start);
+        const to=cm.posFromIndex(seg.end);
+        cm.focus();
+        cm.setSelection(from,to);
+        cm.scrollIntoView({from,to}, 60);
+      }
+      refreshTokenPreview();
+    });
+    frag.appendChild(div);
+  });
+  wrap.innerHTML="";
+  wrap.appendChild(frag);
+}
+function highlightPreviewSelection(){
+  document.querySelectorAll('#wordPreview .seg').forEach(s=>s.classList.remove('active'));
+  const el=document.querySelector(`#wordPreview .seg[data-id="${CSS.escape(wordState.selectedSegId||"")}"]`);
+  if(el){ el.classList.add('active'); el.scrollIntoView({block:'nearest'}); }
+}
+
+/* ---------- XML editor ---------- */
+function initXmlEditor(){
+  const wrap=$('xmlEditorWrap');
+  wrap.innerHTML = `<textarea id="xmlTA"></textarea>`;
+  const ta=$('xmlTA');
+  ta.value = wordState.xml || "";
+  cm = CodeMirror.fromTextArea(ta, {
+    mode: "application/xml",
+    theme: "material-darker",
+    lineNumbers: true,
+    lineWrapping: false,
+    viewportMargin: 50
+  });
+  cm.setValue(wordState.xml || "");
+  cm.on('cursorActivity', ()=>{
+    if(!wordState.segments.length) return;
+    const idx=cm.indexFromPos(cm.getCursor());
+    let best=null;
+    for(const seg of wordState.segments){
+      if(idx>=seg.start && idx<=seg.end){ best=seg; break; }
+      if(idx<seg.start) break;
+    }
+    if(best && best.id!==wordState.selectedSegId){
+      wordState.selectedSegId=best.id;
+      highlightPreviewSelection();
+    }
+  });
+  cm.on('change', ()=>{
+    wordState.xml = cm.getValue();
+  });
+}
+
+/* ---------- Undo/redo ---------- */
+function pushHistory(){
+  wordState.history.push(wordState.xml);
+  wordState.redo.length=0;
+  syncUndoRedoButtons();
+}
+function syncUndoRedoButtons(){
+  const u = wordState.history.length===0;
+  const r = wordState.redo.length===0;
+  ['btnUndo','btnUndo2','btnUndo3','btnUndo4'].forEach(id=>$(id).disabled=u);
+  ['btnRedo','btnRedo2','btnRedo3','btnRedo4'].forEach(id=>$(id).disabled=r);
+}
+function rebuildAfterXmlChange(){
+  if(cm && cm.getValue()!==wordState.xml) cm.setValue(wordState.xml);
+  const {paras,tables,segs}=buildSegments(wordState.xml);
+  wordState.paragraphs=paras; wordState.tables=tables; wordState.segments=segs;
+  renderParagraphList(); renderTableList(); renderWordPreview();
+  renderTablePreviewForCell(wordState.selectedCellKey);
+  rebuildRebindUI();
+  refreshTokenPreview();
+}
+function doUndo(){
+  if(!wordState.history.length) return;
+  wordState.redo.push(wordState.xml);
+  wordState.xml = wordState.history.pop();
+  rebuildAfterXmlChange();
+  syncUndoRedoButtons();
+  setStatus("Undid last change.", "warn");
+}
+function doRedo(){
+  if(!wordState.redo.length) return;
+  wordState.history.push(wordState.xml);
+  wordState.xml = wordState.redo.pop();
+  rebuildAfterXmlChange();
+  syncUndoRedoButtons();
+  setStatus("Redid change.", "warn");
+}
+
+/* ---------- Insert operations ---------- */
+function insertTokenIntoParagraphXml(xml, paraIndex, token){
+  const re=/<w:p\b[\s\S]*?<\/w:p>/g;
+  let m, idx=0;
+  while((m=re.exec(xml))!==null){
+    if(idx===paraIndex){
+      const pXml=m[0];
+      const insertion = `<w:r><w:t xml:space="preserve">${escXml(" " + token)}</w:t></w:r>`;
+      const newP = pXml.replace(/<\/w:p>\s*$/i, insertion + `</w:p>`);
+      return xml.slice(0,m.index) + newP + xml.slice(m.index+pXml.length);
+    }
+    idx++;
+  }
+  throw new Error("Could not locate paragraph index");
+}
+function insertTokenIntoCellXml(xml, cellKey, token){
+  const tables=parseTables(xml);
+  for(const tbl of tables){
+    for(const row of tbl.rows){
+      for(const cell of row.cells){
+        if(cell.key===cellKey){
+          const cellXml = xml.slice(cell.start, cell.end);
+          const pMatches = [...cellXml.matchAll(/<w:p\b[\s\S]*?<\/w:p>/g)];
+          const insertion = `<w:r><w:t xml:space="preserve">${escXml(" " + token)}</w:t></w:r>`;
+          let newCellXml;
+          if(pMatches.length){
+            const last = pMatches[pMatches.length-1];
+            const pXml = last[0];
+            const pStart = last.index;
+            const pEnd = pStart + pXml.length;
+            const newP = pXml.replace(/<\/w:p>\s*$/i, insertion + `</w:p>`);
+            newCellXml = cellXml.slice(0,pStart) + newP + cellXml.slice(pEnd);
+          }else{
+            newCellXml = cellXml.replace(/<\/w:tc>\s*$/i, `<w:p>${insertion}</w:p></w:tc>`);
+          }
+          return xml.slice(0,cell.start) + newCellXml + xml.slice(cell.end);
+        }
+      }
+    }
+  }
+  throw new Error("Could not locate selected cell after edits. Re-select the cell.");
+}
+function insertTokenAtXmlCursor(token){
+  if(!cm) throw new Error("XML editor not ready");
+  const mode=$('insertMode').value;
+  if(mode==='segmentEnd'){
+    if(!wordState.selectedSegId) throw new Error("Select a segment on the left preview");
+    const seg = wordState.segments.find(s=>s.id===wordState.selectedSegId);
+    if(!seg) throw new Error("Selected segment not found");
+    const to=cm.posFromIndex(seg.end);
+    cm.focus();
+    cm.setCursor(to);
+  }
+  const cur=cm.getCursor();
+  const snippet = `<w:r><w:t xml:space="preserve">${escXml(" " + token)}</w:t></w:r>`;
+  cm.replaceRange(snippet, cur);
+  wordState.xml = cm.getValue();
+}
+function smartInsert(){
+  const tok=tokenFromSelection();
+  if(!tok || !wordState.xml) return;
+  const tab=activeTab();
+  try{
+    pushHistory();
+    if(tab==='para' && wordState.selectedParaIndex!==null){
+      wordState.xml = insertTokenIntoParagraphXml(wordState.xml, wordState.selectedParaIndex, tok);
+    }else if(tab==='table' && wordState.selectedCellKey){
+      wordState.xml = insertTokenIntoCellXml(wordState.xml, wordState.selectedCellKey, tok);
+    }else if(tab==='dual' && cm){
+      insertTokenAtXmlCursor(tok);
+      wordState.xml = cm.getValue();
+    }else{
+      // fallback: insert into xml cursor if available
+      if(cm){ insertTokenAtXmlCursor(tok); wordState.xml = cm.getValue(); }
+      else throw new Error("Select a target (paragraph or table cell).");
+    }
+    rebuildAfterXmlChange();
+    syncUndoRedoButtons();
+    setStatus("Inserted token.", "good");
+  }catch(e){
+    // rollback history push if it failed
+    wordState.history.pop();
+    syncUndoRedoButtons();
+    setStatus("Insert failed: "+(e?.message||e), "bad");
+  }
+}
+
+/* ---------- Export mapped template ---------- */
+function exportMappedTemplate(){
+  if(!wordState.zip || !wordState.xml) return;
+  const originalXml = wordState.zip.file("word/document.xml").asText();
+  wordState.zip.file("word/document.xml", wordState.xml);
+  const out=wordState.zip.generate({type:"blob", mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+  wordState.zip.file("word/document.xml", originalXml);
+  const outName = wordState.docxName.replace(/\.docx$/i,"") + " - MAPPED - " + nowStamp() + ".docx";
+  saveAs(out, outName);
+  setStatus("Downloaded mapped template: "+outName, "good");
+}
+
+/* ---------- Rebinding UI ---------- */
+function extractExpectedWorkbookNames(xml){
+  const re=/\[\[(XLSX|XLSX_RANGE):([^|\]]+)\|/g;
+  const set=new Set();
+  let m;
+  while((m=re.exec(xml))!==null){
+    set.add(m[2]);
+  }
+  return [...set].sort();
+}
+function rebuildRebindUI(){
+  const pane=$('rebindPane');
+  pane.innerHTML="";
+  if(!wordState.xml){
+    pane.innerHTML = `<div class="status">Load a template first.</div>`;
+    return;
+  }
+  const expected = extractExpectedWorkbookNames(wordState.xml);
+  const uploaded = [...excelState.wbByName.keys()];
+  if(!expected.length){
+    pane.innerHTML = `<div class="status warn">No [[XLSX:...]] or [[XLSX_RANGE:...]] tokens found.</div>`;
+    return;
+  }
+  if(!uploaded.length){
+    pane.innerHTML = `<div class="status">Upload Excel workbooks first.</div>`;
+    return;
+  }
+
+  const table=document.createElement('table');
+  table.className='rebTbl';
+  table.innerHTML = `<thead><tr><th>Expected workbook name (from template)</th><th>Uploaded file to use</th><th>Status</th></tr></thead>`;
+  const tbody=document.createElement('tbody');
+
+  expected.forEach(exp=>{
+    const tr=document.createElement('tr');
+
+    const td1=document.createElement('td'); td1.textContent=exp;
+
+    const td2=document.createElement('td');
+    const sel=document.createElement('select'); sel.style.width='100%';
+    sel.appendChild(new Option("(use exact match if present)",""));
+    uploaded.forEach(u=>sel.appendChild(new Option(u,u)));
+
+    let pre="";
+    if(uploaded.includes(exp)) pre="";
+    else if(rebindMap.has(exp)) pre=rebindMap.get(exp);
+    else pre=uploaded[0]||"";
+    sel.value=pre;
+
+    sel.addEventListener('change', ()=>{
+      const v=sel.value;
+      if(v) rebindMap.set(exp, v); else rebindMap.delete(exp);
+      rebuildRebindUI();
+    });
+    td2.appendChild(sel);
+
+    const td3=document.createElement('td');
+    const statusSpan=document.createElement('span');
+    statusSpan.className='pill';
+    const hasExact = uploaded.includes(exp);
+    const mapped = rebindMap.get(exp);
+    if(hasExact) statusSpan.textContent="Exact match OK";
+    else if(mapped) statusSpan.textContent=`Rebound → ${mapped}`;
+    else{
+      statusSpan.textContent="MISSING (select file)";
+      statusSpan.style.borderColor="rgba(255,106,106,.55)";
+      statusSpan.style.background="rgba(255,106,106,.12)";
+    }
+    td3.appendChild(statusSpan);
+
+    tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  pane.appendChild(table);
+
+  const missing = expected.filter(exp=> !excelState.wbByName.has(exp) && !rebindMap.has(exp));
+  pane.appendChild(Object.assign(document.createElement('div'),{
+    className: missing.length ? 'status warn' : 'status good',
+    textContent: missing.length ? `Missing expected workbooks: ${missing.join(", ")}` : `All expected workbook names are resolvable.`
+  }));
+}
+function resolveWorkbookName(expectedName){
+  if(excelState.wbByName.has(expectedName)) return expectedName;
+  const mapped=rebindMap.get(expectedName);
+  if(mapped && excelState.wbByName.has(mapped)) return mapped;
+  return null;
+}
+
+/* ---------- Placeholder replacement ---------- */
+function extractTokens(xml){
+  const re=/\[\[(XLSX|XLSX_RANGE):[^\]]+\]\]/g;
+  const set=new Set(); let m;
+  while((m=re.exec(xml))!==null){ set.add(m[0]); }
+  return [...set];
+}
+function parseToken(tok){
+  // [[XLSX:wb|sheet|A1]]
+  let m=/\[\[XLSX:([^|\]]+)\|([^|\]]+)\|([A-Z]{1,3}\d{1,7})\]\]/.exec(tok);
+  if(m) return {type:"cell", wb:m[1], sh:m[2], a:m[3]};
+  // [[XLSX_RANGE:wb|sheet|A1:C3]]
+  m=/\[\[XLSX_RANGE:([^|\]]+)\|([^|\]]+)\|([A-Z]{1,3}\d{1,7}:[A-Z]{1,3}\d{1,7})\]\]/.exec(tok);
+  if(m) return {type:"range", wb:m[1], sh:m[2], r:m[3]};
+  return null;
+}
+function rangeToTSV(sheet, a1range){
+  const rg = XLSX.utils.decode_range(a1range);
+  const rows=[];
+  for(let r=rg.s.r; r<=rg.e.r; r++){
+    const row=[];
+    for(let c=rg.s.c; c<=rg.e.c; c++){
+      const addr = XLSX.utils.encode_cell({r,c});
+      const cell = sheet[addr];
+      row.push(cell && cell.v!==undefined && cell.v!==null ? String(cell.v) : "");
+    }
+    rows.push(row.join("\t"));
+  }
+  return rows.join("\n");
+}
+async function doFill(){
+  if(!wordState.zip || !wordState.xml) throw new Error("Load Word template first");
+  if(!excelState.wbByName.size) throw new Error("Upload Excel files first");
+
+  const tokens = extractTokens(wordState.xml);
+  let xml = wordState.xml;
+
+  const report=[];
+  report.push(`Template: ${wordState.docxName}`);
+  report.push(`Uploaded Excel files: ${[...excelState.wbByName.keys()].join(", ")}`);
+  report.push(`Tokens found: ${tokens.length}`);
+  report.push("");
+
+  let replaced=0, missing=0, missingSheet=0;
+
+  for(const tok of tokens){
+    const info=parseToken(tok);
+    if(!info) continue;
+    const actualWbName = resolveWorkbookName(info.wb);
+    if(!actualWbName){
+      missing++; report.push(`MISSING workbook: expected "${info.wb}" for token ${tok}`); continue;
+    }
+    const wb = excelState.wbByName.get(actualWbName);
+    const sh = wb.Sheets[info.sh];
+    if(!sh){
+      missingSheet++; report.push(`MISSING sheet: ${actualWbName} | ${info.sh} for token ${tok}`); continue;
+    }
+    let val="";
+    if(info.type==="cell"){
+      const cell = sh[info.a];
+      val = (cell && cell.v!==undefined && cell.v!==null) ? String(cell.v) : "";
+    }else if(info.type==="range"){
+      val = rangeToTSV(sh, info.r);
+    }
+    xml = replaceTokenAcrossRuns(xml, tok, escXml(val));
+    replaced++;
+  }
+
+  const zip = wordState.zip;
+  const originalXml = zip.file("word/document.xml").asText();
+  zip.file("word/document.xml", xml);
+  const out = zip.generate({type:"blob", mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+  zip.file("word/document.xml", originalXml);
+
+  report.push("");
+  report.push(`Replaced: ${replaced}`);
+  report.push(`Missing workbook: ${missing}`);
+  report.push(`Missing sheet: ${missingSheet}`);
+  lastReport = report.join("\n");
+
+  $('btnDownloadReport').disabled=false;
+  const outName = wordState.docxName.replace(/\.docx$/i,"") + " - FILLED - " + nowStamp() + ".docx";
+  saveAs(out, outName);
+  setFillStatus(`Downloaded: ${outName}\nReplaced: ${replaced}\nMissing workbook: ${missing}\nMissing sheet: ${missingSheet}`, (missing||missingSheet)?"warn":"good");
+}
+
+/* ---------- Regex Find/Replace (across tags) ---------- */
+function buildWordTextStream(xml){
+  // Collect all <w:t ...>TEXT</w:t> in order with their original lengths
+  const re=/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g;
+  const nodes=[];
+  let m;
+  while((m=re.exec(xml))!==null){
+    const full=m[0];
+    const text=m[1] ?? "";
+    const fullStart=m.index;
+    const textStart = fullStart + full.indexOf(">") + 1;
+    nodes.push({text, len:text.length, textStart});
+  }
+  const parts = nodes.map(n=>n.text);
+  const stream = parts.join("");
+  // cumulative lengths for mapping
+  const cum=[];
+  let total=0;
+  for(const n of nodes){ cum.push(total); total += n.len; }
+  return {nodes, stream, cum, total};
+}
+function flagsFromInput(){
+  const raw = ($('rxFlags').value||"g").replace(/\s+/g,"");
+  // ensure g is respected by caller where needed
+  return raw;
+}
+let rxMatches=[];
+let rxCursor=0;
+let rxModeLast="";
+
+function compileRegex(){
+  const pat=$('rxFind').value||"";
+  if(!pat) throw new Error("Enter a regex pattern.");
+  const flags=flagsFromInput();
+  try{ return new RegExp(pat, flags); }
+  catch(e){ throw new Error("Invalid regex: "+(e.message||e)); }
+}
+function listRxResults(snips){
+  const wrap=$('rxResults');
+  if(!snips.length){
+    wrap.innerHTML = `<div class="status">No matches.</div>`;
+    return;
+  }
+  const frag=document.createDocumentFragment();
+  snips.forEach((s,i)=>{
+    const div=document.createElement('div');
+    div.className='item';
+    div.innerHTML = `<div class="meta">Match #${i+1} • index ${s.index}</div><div class="txt mono">${escXml(s.snip)}</div>`;
+    div.addEventListener('click', ()=>{
+      // jump selection in CM if possible
+      if(cm && s.xmlIndex!==null){
+        const from=cm.posFromIndex(s.xmlIndex);
+        const to=cm.posFromIndex(s.xmlIndex + s.lenXml);
+        cm.focus();
+        cm.setSelection(from,to);
+        cm.scrollIntoView({from,to}, 60);
+      }
+    });
+    frag.appendChild(div);
+  });
+  wrap.innerHTML="";
+  wrap.appendChild(frag);
+}
+function rxFindAll(){
+  if(!wordState.xml) throw new Error("Load a Word doc first.");
+  const mode=$('rxMode').value;
+  const rx=compileRegex();
+  rxMatches=[]; rxCursor=0; rxModeLast=mode;
+
+  if(mode==='xml'){
+    const xml=wordState.xml;
+    if(!rx.global){
+      // make a global copy for find-all count
+      const flags = (flagsFromInput().includes('g') ? flagsFromInput() : flagsFromInput() + 'g');
+      rxMatches = [...xml.matchAll(new RegExp(rx.source, flags))];
+    }else{
+      rxMatches = [...xml.matchAll(rx)];
+    }
+    const snips = rxMatches.slice(0,500).map(m=>{
+      const idx=m.index||0;
+      const snip=xml.slice(Math.max(0,idx-40), Math.min(xml.length, idx+40));
+      return {index:idx, snip, xmlIndex:idx, lenXml:(m[0]||"").length};
+    });
+    listRxResults(snips);
+    setRxStatus(`Matches: ${rxMatches.length} (raw XML). Click a result to jump in the XML editor.`, rxMatches.length? "good":"warn");
+    return;
+  }
+
+  // Word text stream mode
+  const {nodes, stream, cum} = buildWordTextStream(wordState.xml);
+  // ensure global for collecting all
+  const flags = flagsFromInput().includes('g') ? flagsFromInput() : flagsFromInput() + 'g';
+  const rxg = new RegExp(rx.source, flags);
+  const matches=[...stream.matchAll(rxg)];
+  rxMatches = matches.map(m=>({m, index:m.index||0, text:m[0]||""}));
+
+  // map stream index -> approximate xml index: find node containing index, then add offset to node.textStart
+  function streamToXmlIndex(pos){
+    // binary search in cum
+    let lo=0, hi=nodes.length-1, mid=0, best=0;
+    while(lo<=hi){
+      mid=(lo+hi)>>1;
+      if(cum[mid] <= pos){ best=mid; lo=mid+1; } else hi=mid-1;
+    }
+    const node=nodes[best];
+    const offset = pos - cum[best];
+    return node ? (node.textStart + offset) : null;
+  }
+
+  const snips = rxMatches.slice(0,500).map(obj=>{
+    const idx=obj.index;
+    const snip=stream.slice(Math.max(0,idx-40), Math.min(stream.length, idx+40));
+    const xi=streamToXmlIndex(idx);
+    return {index:idx, snip, xmlIndex:xi, lenXml:(obj.text||"").length};
+  });
+  listRxResults(snips);
+  setRxStatus(`Matches: ${rxMatches.length} (Word text across <w:t>). Replace-all will rewrite <w:t> text content in-place.`, rxMatches.length? "good":"warn");
+}
+function rxReplaceAll(){
+  if(!wordState.xml) throw new Error("Load a Word doc first.");
+  const mode=$('rxMode').value;
+  const rx=compileRegex();
+  const rep=$('rxReplace').value ?? "";
+
+  pushHistory();
+
+  if(mode==='xml'){
+    // ensure global replace when requested
+    const flags = flagsFromInput().includes('g') ? flagsFromInput() : flagsFromInput() + 'g';
+    const rxx = new RegExp(rx.source, flags);
+    wordState.xml = wordState.xml.replace(rxx, rep);
+    rebuildAfterXmlChange();
+    syncUndoRedoButtons();
+    setRxStatus("Replace-all complete (raw XML).", "good");
+    return;
+  }
+
+  // Word text mode:
+  const {nodes, stream} = buildWordTextStream(wordState.xml);
+  const flags = flagsFromInput().includes('g') ? flagsFromInput() : flagsFromInput() + 'g';
+  const rxx = new RegExp(rx.source, flags);
+  const replacedText = stream.replace(rxx, rep);
+
+  // reflow replacedText back into nodes keeping node counts; preserve original lengths except last node gets remainder
+  let pos=0;
+  const newNodesText=[];
+  for(let i=0;i<nodes.length;i++){
+    const n=nodes[i];
+    let take = (i===nodes.length-1) ? (replacedText.length - pos) : n.len;
+    if(take < 0) take = 0;
+    newNodesText.push(replacedText.slice(pos, pos+take));
+    pos += take;
+  }
+
+  // rebuild xml by replacing each <w:t> content in order
+  let xml = wordState.xml;
+  const re=/<w:t\b[^>]*>[\s\S]*?<\/w:t>/g;
+  let idx=0;
+  xml = xml.replace(re, (full)=>{
+    if(idx>=newNodesText.length) return full;
+    const open = full.slice(0, full.indexOf(">")+1);
+    const close = "</w:t>";
+    const newText = newNodesText[idx++];
+    return open + newText + close;
+  });
+  wordState.xml = xml;
+  rebuildAfterXmlChange();
+  syncUndoRedoButtons();
+  setRxStatus("Replace-all complete (Word text across <w:t>).", "good");
+}
+function rxReplaceNext(){
+  // simplest: perform find-all then replace first occurrence by doing a replace with a non-global regex using last cursor
+  if(!wordState.xml) throw new Error("Load a Word doc first.");
+  const mode=$('rxMode').value;
+  const rep=$('rxReplace').value ?? "";
+  const pat=$('rxFind').value||"";
+  if(!pat) throw new Error("Enter a regex.");
+  const flags = flagsFromInput().replace(/g/g,""); // no global
+  const rx = new RegExp(pat, flags);
+
+  pushHistory();
+
+  if(mode==='xml'){
+    // replace first occurrence starting at current cursor in editor if possible
+    let start = 0;
+    if(cm) start = cm.indexFromPos(cm.getCursor());
+    const xml=wordState.xml;
+    const head=xml.slice(0,start);
+    const tail=xml.slice(start);
+    if(!rx.test(tail)){
+      setRxStatus("No match after cursor.", "warn");
+      wordState.history.pop(); syncUndoRedoButtons();
+      return;
+    }
+    const newTail = tail.replace(rx, rep);
+    wordState.xml = head + newTail;
+    rebuildAfterXmlChange();
+    syncUndoRedoButtons();
+    setRxStatus("Replaced next (raw XML).", "good");
+    return;
+  }
+
+  // Word text mode: replace first match in full stream (cursor-aware would require more mapping; keep it simple)
+  const {nodes, stream} = buildWordTextStream(wordState.xml);
+  if(!rx.test(stream)){
+    setRxStatus("No match.", "warn");
+    wordState.history.pop(); syncUndoRedoButtons();
+    return;
+  }
+  const replacedText = stream.replace(rx, rep);
+
+  let pos=0;
+  const newNodesText=[];
+  for(let i=0;i<nodes.length;i++){
+    const n=nodes[i];
+    let take = (i===nodes.length-1) ? (replacedText.length - pos) : n.len;
+    if(take < 0) take = 0;
+    newNodesText.push(replacedText.slice(pos, pos+take));
+    pos += take;
+  }
+
+  let xml = wordState.xml;
+  const re=/<w:t\b[^>]*>[\s\S]*?<\/w:t>/g;
+  let idx=0;
+  xml = xml.replace(re, (full)=>{
+    if(idx>=newNodesText.length) return full;
+    const open = full.slice(0, full.indexOf(">")+1);
+    const close = "</w:t>";
+    const newText = newNodesText[idx++];
+    return open + newText + close;
+  });
+  wordState.xml = xml;
+  rebuildAfterXmlChange();
+  syncUndoRedoButtons();
+  setRxStatus("Replaced next (Word text mode).", "good");
+}
+
+/* ---------- Load Excel + Word ---------- */
+async function loadExcels(files){
+  await ensureLibs();
+  excelState={ wbByName:new Map(), wbName:"", sheetName:"", pickedCell:"", range:null, rangeA1:"" };
+  for(const f of files){
+    const ab=await readAsArrayBuffer(f);
+    const wb=XLSX.read(ab,{type:"array"});
+    excelState.wbByName.set(f.name, wb);
+  }
+  fillWorkbookSelect();
+  $('excelPill').textContent = `${excelState.wbByName.size} workbook(s)`;
+  $('btnRebuildRebind').disabled = !(wordState.xml && excelState.wbByName.size);
+  $('btnFill').disabled = !(wordState.xml && excelState.wbByName.size);
+  setFillStatus(wordState.xml && excelState.wbByName.size ? "Ready to replace placeholders." : "Load Word + Excel to enable replacement.", "");
+  rebuildRebindUI();
+}
+async function loadWord(file){
+  await ensureLibs();
+  const ab=await readAsArrayBuffer(file);
+  const zip=new PizZip(ab);
+  const xml=zip.file("word/document.xml")?.asText();
+  if(!xml) throw new Error("Could not find word/document.xml");
+
+  wordState.docxName=file.name;
+  wordState.zip=zip;
+  wordState.xml=xml;
+  wordState.history=[]; wordState.redo=[];
+  wordState.selectedParaIndex=null;
+  wordState.selectedCellKey=null;
+  wordState.selectedSegId=null;
+
+  const {paras,tables,segs} = buildSegments(xml);
+  wordState.paragraphs=paras;
+  wordState.tables=tables;
+  wordState.segments=segs;
+
+  $('wordPill').textContent = `${paras.length} paragraphs • ${tables.length} tables`;
+  ['btnExportTemplate','btnExportTemplate2','btnExportTemplate3'].forEach(id=>$(id).disabled=false);
+  $('btnRebuildRebind').disabled = !(wordState.xml && excelState.wbByName.size);
+  $('btnFill').disabled = !(wordState.xml && excelState.wbByName.size);
+  $('btnRxFind').disabled=false;
+  $('btnRxReplaceOne').disabled=false;
+  $('btnRxReplaceAll').disabled=false;
+
+  renderParagraphList();
+  renderTableList();
+  renderTablePreviewForCell(null);
+  renderWordPreview();
+  initXmlEditor();
+  rebuildRebindUI();
+  refreshTokenPreview();
+  syncUndoRedoButtons();
+
+  setStatus("Word loaded. Choose a view and start mapping.", "good");
+  setFillStatus(wordState.xml && excelState.wbByName.size ? "Ready to replace placeholders." : "Load Word + Excel to enable replacement.", "");
+  setRxStatus("Ready.", "");
+}
+
+/* ---------- UI events ---------- */
+$('xlsx').addEventListener('change', async ()=>{
+  try{
+    const files=[...$('xlsx').files];
+    if(!files.length) return;
+    setStatus("Loading Excel…");
+    await loadExcels(files);
+    setStatus("Excel loaded. Now load Word and start mapping.", "good");
+  }catch(e){
+    setStatus("Excel load failed: "+(e?.message||e), "bad");
+  }
+});
+$('wbSel').addEventListener('change', ()=>{
+  excelState.wbName = $('wbSel').value;
+  excelState.sheetName = "";
+  excelState.pickedCell = "";
+  excelState.range = null;
+  excelState.rangeA1 = "";
+  $('pickedCell').value="";
+  fillSheetSelect();
+  renderExcel();
+  refreshTokenPreview();
+});
+$('shSel').addEventListener('change', ()=>{
+  excelState.sheetName = $('shSel').value;
+  excelState.pickedCell = "";
+  excelState.range = null;
+  excelState.rangeA1 = "";
+  $('pickedCell').value="";
+  renderExcel();
+  refreshTokenPreview();
+});
+$('range').addEventListener('change', ()=>renderExcel());
+
+$('docx').addEventListener('change', async ()=>{
+  try{
+    const f=$('docx').files[0];
+    if(!f) return;
+    setStatus("Loading Word…");
+    await loadWord(f);
+  }catch(e){
+    setStatus("Word load failed: "+(e?.message||e), "bad");
+  }
+});
+
+$('searchPara').addEventListener('input', ()=>renderParagraphList());
+$('searchTable').addEventListener('input', ()=>renderTableList());
+
+$('btnInsertPara').addEventListener('click', ()=>smartInsert());
+$('btnInsertCell').addEventListener('click', ()=>smartInsert());
+$('btnInsertXml').addEventListener('click', ()=>smartInsert());
+
+$('btnUndo').addEventListener('click', doUndo);
+$('btnUndo2').addEventListener('click', doUndo);
+$('btnUndo3').addEventListener('click', doUndo);
+$('btnUndo4').addEventListener('click', doUndo);
+
+$('btnRedo').addEventListener('click', doRedo);
+$('btnRedo2').addEventListener('click', doRedo);
+$('btnRedo3').addEventListener('click', doRedo);
+$('btnRedo4').addEventListener('click', doRedo);
+
+$('btnExportTemplate').addEventListener('click', exportMappedTemplate);
+$('btnExportTemplate2').addEventListener('click', exportMappedTemplate);
+$('btnExportTemplate3').addEventListener('click', exportMappedTemplate);
+
+$('btnRebuildRebind').addEventListener('click', ()=>{
+  try{ rebuildRebindUI(); setFillStatus("Bindings refreshed.", "good"); }
+  catch(e){ setFillStatus("Bindings refresh failed: "+(e?.message||e), "bad"); }
+});
+
+$('btnFill').addEventListener('click', async ()=>{
+  try{ setFillStatus("Replacing…"); await doFill(); }
+  catch(e){ setFillStatus("Replacement failed: "+(e?.message||e), "bad"); }
+});
+
+$('btnDownloadReport').addEventListener('click', ()=>{
+  const blob=new Blob([lastReport||"No report"],{type:"text/plain;charset=utf-8"});
+  saveAs(blob, "replace_report_"+nowStamp()+".txt");
+});
+
+$('btnRxFind').addEventListener('click', ()=>{
+  try{ rxFindAll(); }
+  catch(e){ setRxStatus(e?.message||String(e), "bad"); }
+});
+$('btnRxReplaceAll').addEventListener('click', ()=>{
+  try{ rxReplaceAll(); }
+  catch(e){ setRxStatus(e?.message||String(e), "bad"); }
+});
+$('btnRxReplaceOne').addEventListener('click', ()=>{
+  try{ rxReplaceNext(); }
+  catch(e){ setRxStatus(e?.message||String(e), "bad"); }
+});
+
+/* ---------- Init ---------- */
+(async function init(){
+  try{
+    await ensureLibs();
+    fillWorkbookSelect(); fillSheetSelect();
+    ['btnExportTemplate','btnExportTemplate2','btnExportTemplate3'].forEach(id=>$(id).disabled=true);
+    $('btnRebuildRebind').disabled=true;
+    $('btnFill').disabled=true;
+    $('btnDownloadReport').disabled=true;
+    $('btnRxFind').disabled=true;
+    $('btnRxReplaceOne').disabled=true;
+    $('btnRxReplaceAll').disabled=true;
+    syncUndoRedoButtons();
+    setStatus("Ready. Upload Excel and Word to start mapping.", "");
+  }catch(e){
+    setStatus("Libraries failed to load. If offline/blocked, add local copies in ./lib/ (pizzip.min.js, xlsx.full.min.js, FileSaver.min.js, codemirror.min.js, xml.min.js).", "bad");
+  }
+})();
+</script>
+</body>
+</html>
