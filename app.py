@@ -36,10 +36,15 @@ def normalize_text(text):
     return re.sub(r'[^a-zA-Z0-9]', '', text).lower()
 
 def extract_all_data(excel_file):
-    """X-Ray Scanner: Finds data regardless of which column the client used."""
+    """X-Ray Scanner using Calamine to bypass formatting crashes."""
     extracted_data = {}
     try:
-        xls = pd.ExcelFile(excel_file)
+        # Read the file bytes directly
+        file_bytes = excel_file.getvalue()
+        
+        # Use calamine engine to completely ignore Excel formatting bugs
+        xls = pd.ExcelFile(file_bytes, engine='calamine')
+        
         for sheet_name in xls.sheet_names:
             df = pd.read_excel(xls, sheet_name=sheet_name, header=None)
             if df.empty: continue
@@ -174,6 +179,4 @@ if excel_upload and word_upload:
                 "Excel_Data_Extracted": extracted_data
             }
             
-            # Display as formatted JSON with native copy button
             st.code(json.dumps(diagnostic_output, indent=2), language="json")
- 
