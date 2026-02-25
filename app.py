@@ -2,135 +2,136 @@ import streamlit as st
 import pandas as pd
 from docx import Document
 import io
+import re
 
-st.set_page_config(page_title="NQTL Document Assembly Engine", layout="centered")
+st.set_page_config(page_title="NQTL Document Assembly Engine", layout="wide")
 
 TARGET_METRICS = [
-    "Number (#) of Total Claims Incurred During the Plan Year",
-    "Percentage (%) of Claims Denied Based on Lack of Medical Necessity",
-    "Percentage (%) of Claims Denied Based on Lack of Medical Necessity Overturned on Appeal",
-    "Number (#) of Claims Submitted for Prior Authorization",
-    "Percentage (%) of Prior Authorization Claims Denied Due to Non-Administrative Reasons",
-    "Percentage (%) of Prior Authorization Claims Denied Due to Non-Administrative Reasons Overturned on Appeal",
-    "Average Processing Time (in Days) for Prior Authorization Requests",
-    "Average Processing Time (in Days) for Prior Authorization Appeals",
-    "Number (#) of Claims Submitted for Concurrent Review",
-    "Percentage (%) of Concurrent Review Claims Denied Due to Non-Administrative Reasons",
-    "Percentage (%) of Concurrent Review Claims Denied Due to Non-Administrative Reasons Overturned on Appeal",
-    "Average Processing Time (in Days) for Concurrent Review Requests",
-    "Average Processing Time (in Days) for Concurrent Review Appeals",
-    "Number (#) of Claims Submitted for Retrospective Review",
-    "Percentage (%) of Retrospective Review Claims Denied Due to Non-Administrative Reasons",
-    "Percentage (%) of Retrospective Review Claims Denied Due to Non-Administrative Reasons Overturned on Appeal",
-    "Average Processing Time (in Days) for Retrospective Review Requests",
-    "Average Processing Time (in Days) for Retrospective Review Appeals",
-    "Percentage (%) of Claims Denied as Experimental/Investigational",
-    "Average Processing Time (in Days) for Experimental/Investigational Requests",
-    "Percentage (%) of Experimental/Investigational Claims Appealed",
-    "Percentage (%) of Experimental/Investigational Denials Overturned on Appeal",
-    "Average Processing Time (in Days) for Experimental/Investigational Appeals"
+    "Total Claims Incurred During the Plan Year",
+    "Denied Based on Lack of Medical Necessity",
+    "Lack of Medical Necessity Overturned on Appeal",
+    "Submitted for Prior Authorization",
+    "Prior Authorization Claims Denied Due to Non-Administrative",
+    "Prior Authorization Claims Denied Due to Non-Administrative Reasons Overturned",
+    "Time (in Days) for Prior Authorization Requests",
+    "Time (in Days) for Prior Authorization Appeals",
+    "Submitted for Concurrent Review",
+    "Concurrent Review Claims Denied Due to Non-Administrative",
+    "Concurrent Review Claims Denied Due to Non-Administrative Reasons Overturned",
+    "Time (in Days) for Concurrent Review Requests",
+    "Time (in Days) for Concurrent Review Appeals",
+    "Submitted for Retrospective Review",
+    "Retrospective Review Claims Denied Due to Non-Administrative",
+    "Retrospective Review Claims Denied Due to Non-Administrative Reasons Overturned",
+    "Time (in Days) for Retrospective Review Requests",
+    "Time (in Days) for Retrospective Review Appeals"
 ]
 
+def normalize_text(text):
+    """Strips all spaces and special characters for bulletproof matching."""
+    if not isinstance(text, str):
+        return ""
+    return re.sub(r'[^a-zA-Z0-9]', '', text).lower()
+
 def extract_all_data(excel_file):
-    """
-    Scans Excel sheets looking for side-by-side or stacked data configurations.
-    """
     extracted_data = {}
     try:
         xls = pd.ExcelFile(excel_file)
-        
         for sheet_name in xls.sheet_names:
             df = pd.read_excel(xls, sheet_name=sheet_name, header=None)
-            if df.empty:
-                continue
-                
-            num_rows, num_cols = df.shape
+            if df.empty: continue
             
+            num_rows, num_cols = df.shape
             for row_idx in range(num_rows):
-                col0_val = str(df.iloc[row_idx, 0]).strip()
-                
-                for metric in TARGET_METRICS:
-                    if metric.lower() in col0_val.lower():
-                        if metric not in extracted_data:
-                            extracted_data[metric] = {}
-                        
-                        # Scan the current row and the next 8 rows for our data labels
-                        for i in range(0, 10):
-                            if row_idx + i < num_rows:
-                                label_col0 = str(df.iloc[row_idx + i, 0]).strip()
-                                label_col1 = str(df.iloc[row_idx + i, 1]).strip() if num_cols > 1 else ""
-                                
-                                # The label ("Inpatient IN") might be in col 0 or col 1
-                                target_labels = ["Inpatient IN", "Inpatient OON", "Outpatient IN", "Outpatient OON"]
-                                row_label = label_col1 if label_col1 in target_labels else label_col0
-                                
-                                if row_label in target_labels:
-                                    val_start_col = 1 if row_label == label_col0 else 2
+                for col_idx in range(min(2, num_cols)):
+                    cell_value = str(df.iloc[row_idx, col_idx]).strip()
+                    cell_norm = normalize_text(cell_value)
+                    
+                    for metric in TARGET_METRICS:
+                        metric_norm = normalize_text(metric)
+                        if metric_norm in cell_norm and metric_norm != "":
+                            if metric not in extracted_data:
+                                extracted_data[metric] = {}
+                            
+                            for i in range(1, 15):
+                                if row_idx + i < num_rows:
+                                    label_col0 = str(df.iloc[row_idx + i, 0]).strip()
+                                    label_col1 = str(df.iloc[row_idx + i, 1]).strip() if num_cols > 1 else ""
                                     
-                                    vals = []
-                                    for v_col in range(3): # Grab M/S, MH, SUD
-                                        c_idx = val_start_col + v_col
-                                        if c_idx < num_cols:
-                                            val = str(df.iloc[row_idx + i, c_idx]).strip()
-                                            vals.append("" if val.lower() == "nan" else val)
-                                        else:
-                                            vals.append("")
+                                    target_labels = ["inpatientin", "inpatientoon", "outpatientin", "outpatientoon"]
+                                    norm_l0 = normalize_text(label_col0)
+                                    norm_l1 = normalize_text(label_col1)
                                     
-                                    extracted_data[metric][row_label] = vals
+                                    if norm_l0 in target_labels or norm_l1 in target_labels:
+                                        val_start_col = 1 if norm_l0 in target_labels else 2
+                                        real_label = label_col0 if norm_l0 in target_labels else label_col1
+                                        
+                                        vals = []
+                                        for v_col in range(3):
+                                            c_idx = val_start_col + v_col
+                                            if c_idx < num_cols:
+                                                val = str(df.iloc[row_idx + i, c_idx]).strip()
+                                                vals.append("" if val.lower() == "nan" else val)
+                                            else:
+                                                vals.append("")
+                                        
+                                        # Only add if there's actual data
+                                        if any(vals):
+                                            extracted_data[metric][real_label] = vals
     except Exception as e:
-        st.error(f"Error reading Excel file: {e}")
-        
+        st.error(f"Excel Extraction Error: {e}")
     return extracted_data
 
 def inject_data_into_word(word_file, client_data):
-    """
-    Injects data into Word tables accounting for the side-by-side layout.
-    """
     doc = Document(word_file)
     tables_updated = 0
     
     for table in doc.tables:
         current_metric = None
-        
         for row in table.rows:
             try:
-                # In your Word doc, Column 0 is the Metric, Column 1 is the Label (Inpatient IN)
-                col0_text = row.cells[0].text.strip().replace("\n", " ")
+                col0_text = row.cells[0].text.strip()
+                col0_norm = normalize_text(col0_text)
                 
                 # Check if Column 0 contains a target metric
-                if col0_text:
-                    matched_metric = next((m for m in client_data.keys() if m.lower() in col0_text.lower()), None)
+                if col0_norm:
+                    matched_metric = next((m for m in client_data.keys() if normalize_text(m) in col0_norm), None)
                     if matched_metric:
                         current_metric = matched_metric
                 
-                # Now check Column 1 for the data label (Inpatient IN, etc.)
-                if len(row.cells) >= 5:
-                    row_label = row.cells[1].text.strip().replace("\n", " ")
-                    
-                    if current_metric and row_label in client_data[current_metric]:
-                        data_vals = client_data[current_metric][row_label]
+                if len(row.cells) >= 4:
+                    # Look for the label in col 0 or col 1
+                    label_text = row.cells[1].text.strip()
+                    if not label_text: 
+                        label_text = row.cells[0].text.strip()
                         
-                        # Inject into Columns 2 (M/S), 3 (MH), and 4 (SUD)
-                        cells_injected = False
-                        if data_vals[0]: 
-                            row.cells[2].text = data_vals[0]
-                            cells_injected = True
-                        if len(data_vals) > 1 and data_vals[1]: 
-                            row.cells[3].text = data_vals[1]
-                        if len(data_vals) > 2 and data_vals[2]: 
-                            row.cells[4].text = data_vals[2]
+                    label_norm = normalize_text(label_text)
+                    
+                    if current_metric:
+                        # Find the matching label in our dictionary using normalized text
+                        dict_key = next((k for k in client_data[current_metric].keys() if normalize_text(k) == label_norm), None)
+                        
+                        if dict_key:
+                            data_vals = client_data[current_metric][dict_key]
                             
-                        if cells_injected:
-                            tables_updated += 1
+                            # Assume standard Word layout: Col 0/1 are labels, Col 2,3,4 are data
+                            target_col = 2 if len(row.cells) >= 5 else 1
                             
+                            cells_injected = False
+                            for i, val in enumerate(data_vals):
+                                if val and (target_col + i) < len(row.cells):
+                                    row.cells[target_col + i].text = val
+                                    cells_injected = True
+                                    
+                            if cells_injected:
+                                tables_updated += 1
             except Exception:
                 continue
 
     return doc, tables_updated
 
 # --- FRONT-END UI ---
-st.title("📄 NQTL Document Assembly Engine")
-st.markdown("Upload a completed client Excel form and your blank Word template.")
+st.title("📄 NQTL Document Assembly Engine (Diagnostic Mode)")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -140,27 +141,27 @@ with col2:
 
 if excel_upload and word_upload:
     if st.button("Run Assembly Engine", type="primary"):
-        with st.spinner("Scanning Excel sheets and mapping to Word document..."):
+        with st.spinner("Scanning files..."):
             
+            # 1. Test Excel Extraction
             extracted_data = extract_all_data(excel_upload)
             
+            st.markdown("### Step 1: Excel Extraction Results")
             if extracted_data:
+                st.success("Successfully found data in the Excel file!")
+                st.json(extracted_data) # <--- THIS SHOWS YOU EXACTLY WHAT IT FOUND
+                
+                # 2. Test Word Injection
                 final_doc, updates = inject_data_into_word(word_upload, extracted_data)
                 
-                output_stream = io.BytesIO()
-                final_doc.save(output_stream)
-                output_stream.seek(0)
-                
+                st.markdown("### Step 2: Word Injection Results")
                 if updates > 0:
-                    st.success(f"✅ Success! Injected data into {updates} rows across the document.")
+                    st.success(f"✅ Success! Injected data into {updates} rows across the Word document.")
+                    output_stream = io.BytesIO()
+                    final_doc.save(output_stream)
+                    output_stream.seek(0)
+                    st.download_button("⬇️ Download Completed Analysis", data=output_stream, file_name="Completed_NQTL.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
                 else:
-                    st.warning("⚠️ Files were processed, but 0 rows were updated. Check if the Word table structures match the Excel headers.")
-                
-                st.download_button(
-                    label="⬇️ Download Completed NQTL Analysis",
-                    data=output_stream,
-                    file_name="Completed_NQTL_Analysis.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
+                    st.error("⚠️ The Excel data was read perfectly, but 0 rows were updated in Word. This means the Word table structures do not match the expected format.")
             else:
-                st.error("Could not extract any data from the Excel file.")
+                st.error("❌ Failed to extract any relevant data from the Excel file. The script could not find the headers.")
